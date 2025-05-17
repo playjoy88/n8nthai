@@ -1,0 +1,55 @@
+# Version control
+.git
+.gitignore
+.github
+
+# Node.js
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Next.js build output
+.next
+out
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Docker files (not needed in build context)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+*.md
+LICENSE
+COOLIFY-DEPLOYMENT.md
+
+# Development/IDE files
+.vscode
+.idea
+*.sublime-*
+.DS_Store
+
+# Test files
+__tests__
+*.test.js
+*.spec.js
+coverage
+
+# Temporary files
+tmp
+*.tmp
+*.bak
+*.swp
+
+# Logs
+logs
+*.log
+
+# Other
+.vercel
+.turbo

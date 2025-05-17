@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  n8nthai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: n8nthai-app
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://n8nthai:${DB_PASSWORD}@postgres:5432/n8nthai?schema=public
+      - JWT_SECRET=${JWT_SECRET}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXT_PUBLIC_APP_URL}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - INSTANCE_BASE_DOMAIN=${INSTANCE_BASE_DOMAIN}
+      - INSTANCE_BASE_PORT=${INSTANCE_BASE_PORT}
+      - INSTANCE_TEMPLATE_PATH=${INSTANCE_TEMPLATE_PATH}
+      - EMAIL_SERVER=${EMAIL_SERVER}
+      - EMAIL_FROM=${EMAIL_FROM}
+    networks:
+      - n8nthai-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - ./uploads:/app/uploads
+      - instance-volume:/srv/n8n-template
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8nthai.rule=Host(`${INSTANCE_BASE_DOMAIN}`)"
+      - "traefik.http.routers.n8nthai.entrypoints=websecure"
+      - "traefik.http.routers.n8nthai.tls.certresolver=letsencrypt"
+      - "traefik.http.services.n8nthai.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.n8nthai-secure-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.n8nthai-secure-headers.headers.sslRedirect=true"
+      - "traefik.http.middlewares.n8nthai-secure-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.n8nthai-secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.n8nthai-secure-headers.headers.forceSTSHeader=true"
+      - "traefik.http.middlewares.n8nthai-secure-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.n8nthai-secure-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.n8nthai-secure-headers.headers.stsSeconds=31536000"
+      - "traefik.http.routers.n8nthai.middlewares=n8nthai-secure-headers"
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: n8nthai-postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=n8nthai
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=n8nthai
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - n8nthai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8nthai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: n8nthai-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks:
+      - n8nthai-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Traefik reverse proxy (optional - Coolify might handle this)
+  traefik:
+    image: traefik:v2.10
+    container_name: n8nthai-traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard (optional, can be removed in production)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml
+      - ./traefik/config:/etc/traefik/config
+      - ./traefik/acme:/etc/traefik/acme
+    depends_on:
+      - n8nthai
+    networks:
+      - n8nthai-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${INSTANCE_BASE_DOMAIN}`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$5BpPNUHd$$ex3lR9/OEU6DpQdkEb5MW/" # admin:password
+      - "traefik.http.routers.traefik.middlewares=traefik-auth"
+
+networks:
+  n8nthai-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  instance-volume:
+    driver: local

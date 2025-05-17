@@ -1,0 +1,104 @@
+################################################################
+# Dynamic configuration for n8nThai application
+################################################################
+
+http:
+  middlewares:
+    # Security header middleware
+    secure-headers:
+      headers:
+        frameDeny: true
+        sslRedirect: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
+        customFrameOptionsValue: "SAMEORIGIN"
+    
+    # Compression middleware
+    compress:
+      compress: {}
+    
+    # Rate limiting middleware
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1m
+    
+    # Retry middleware
+    retry:
+      retry:
+        attempts: 3
+        initialInterval: "500ms"
+    
+    # Error pages middleware
+    error-pages:
+      errors:
+        status: ["400-499", "500-599"]
+        service: "error-handler"
+        query: "/{status}.html"
+
+  # Routing for n8nThai application
+  routers:
+    # Main application router
+    n8nthai:
+      rule: "Host(`${INSTANCE_BASE_DOMAIN}`)"
+      service: "n8nthai-app"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: "letsencrypt"
+      middlewares:
+        - "secure-headers"
+        - "compress"
+        - "rate-limit"
+        - "retry"
+    
+    # API router with different rate limiting
+    n8nthai-api:
+      rule: "Host(`${INSTANCE_BASE_DOMAIN}`) && PathPrefix(`/api`)"
+      service: "n8nthai-app"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: "letsencrypt"
+      middlewares:
+        - "secure-headers"
+        - "compress"
+        - "retry"
+
+  # Service definitions
+  services:
+    n8nthai-app:
+      loadBalancer:
+        servers:
+          - url: "http://n8nthai:3000"
+        passHostHeader: true
+        responseForwarding:
+          flushInterval: "100ms"
+        healthCheck:
+          path: "/"
+          interval: "10s"
+          timeout: "3s"
+          method: "GET"
+    
+    # Optional error handler service
+    error-handler:
+      loadBalancer:
+        servers:
+          - url: "http://n8nthai:3000/error-pages"
+
+# TLS options (optional)
+tls:
+  options:
+    default:
+      minVersion: "VersionTLS12"
+      cipherSuites:
+        - "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
+        - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+        - "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+        - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+        - "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305"
+        - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"

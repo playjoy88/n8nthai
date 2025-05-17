@@ -1,0 +1,105 @@
+// This is your Prisma schema file for the n8n hosting platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String     @id @default(cuid())
+  username              String     @unique
+  email                 String     @unique
+  passwordHash          String
+  createdAt             DateTime   @default(now())
+  plan                  PlanType   @default(free)
+  isActive              Boolean    @default(true)
+  expiresAt             DateTime?
+  isSuspended           Boolean    @default(false)
+  lastLoginAt           DateTime?
+  resetToken            String?
+  resetTokenExpiresAt   DateTime?
+  instances             Instance[]
+  payments              Payment[]
+}
+
+model Instance {
+  id            String    @id @default(cuid())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  port          Int
+  subdomain     String    @unique
+  customDomain  String?
+  dockerPath    String
+  status        InstanceStatus @default(running)
+  isBackedUp    Boolean   @default(false)
+  lastBackupAt  DateTime?
+  createdAt     DateTime  @default(now())
+  ram           Int       // in MB
+  cpu           Float     // in vCPU
+  maxWorkflows  Int
+  maxExecutions Int
+  logs          Log[]
+  backups       Backup[]
+}
+
+model Log {
+  id          String    @id @default(cuid())
+  instance    Instance  @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  instanceId  String
+  message     String
+  type        LogType
+  timestamp   DateTime  @default(now())
+  metadata    Json?
+}
+
+model Payment {
+  id              String    @id @default(cuid())
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  amount          Float
+  status          PaymentStatus
+  paymentDate     DateTime  @default(now())
+  paymentProvider String
+  invoiceId       String?
+  metadata        Json?
+  nextBillingDate DateTime?
+}
+
+model Backup {
+  id          String    @id @default(cuid())
+  instance    Instance  @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  instanceId  String
+  path        String
+  size        Int       // in bytes
+  createdAt   DateTime  @default(now())
+  isAutomatic Boolean   @default(false)
+}
+
+enum PlanType {
+  free
+  basic
+  pro
+  enterprise
+}
+
+enum InstanceStatus {
+  running
+  stopped
+  deleted
+}
+
+enum LogType {
+  info
+  error
+  warning
+}
+
+enum PaymentStatus {
+  success
+  failed
+  pending
+}
