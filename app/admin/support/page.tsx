@@ -572,3 +572,277 @@ export default function AdminSupportPage() {
                         <option value="waiting_for_customer">รอลูกค้า</option>
                         <option value="resolved">แก้ไขแล้ว</option>
                         <option value="closed">ปิด</option>
+                      </select>
+                    </div>
+                    
+                    <div className="sm:col-span-2">
+                      <label htmlFor="priorityFilter" className="block text-sm font-medium text-gray-700">ความสำคัญ</label>
+                      <select
+                        id="priorityFilter"
+                        value={priorityFilter}
+                        onChange={(e) => setPriorityFilter(e.target.value)}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                      >
+                        <option value="all">ทั้งหมด</option>
+                        <option value="low">ต่ำ</option>
+                        <option value="medium">ปานกลาง</option>
+                        <option value="high">สูง</option>
+                        <option value="urgent">เร่งด่วน</option>
+                      </select>
+                    </div>
+                    
+                    <div className="sm:col-span-2">
+                      <label htmlFor="search" className="block text-sm font-medium text-gray-700">ค้นหา</label>
+                      <div className="mt-1 flex rounded-md shadow-sm">
+                        <input
+                          type="text"
+                          name="search"
+                          id="search"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="focus:ring-blue-500 focus:border-blue-500 flex-1 block w-full rounded-md sm:text-sm border-gray-300"
+                          placeholder="ชื่อผู้ใช้, ID หรือหัวข้อ"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-5">
+                    <button
+                      type="submit"
+                      className="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      ค้นหาตั๋ว
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+            
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+              {loadingTickets ? (
+                <div className="p-4 flex justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <>
+                  {paginatedTickets.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      ไม่พบตั๋วที่ตรงกับเงื่อนไขการค้นหา
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-gray-200">
+                      {paginatedTickets.map((ticket) => (
+                        <li 
+                          key={ticket.id}
+                          className={`p-4 hover:bg-gray-50 cursor-pointer ${selectedTicket?.id === ticket.id ? 'bg-blue-50' : ''}`}
+                          onClick={() => handleSelectTicket(ticket)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-blue-600 truncate">
+                                {ticket.subject}
+                              </p>
+                              <div className="mt-1 flex items-center">
+                                <p className="text-sm text-gray-500">
+                                  {ticket.username} · {getTimeAgo(ticket.createdAt)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="ml-4 flex-shrink-0 flex space-x-2">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(ticket.status)}`}>
+                                {getStatusText(ticket.status)}
+                              </span>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityBadgeClass(ticket.priority)}`}>
+                                {getPriorityText(ticket.priority)}
+                              </span>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                      <div className="flex-1 flex justify-between sm:hidden">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${currentPage === 1 ? 'text-gray-300' : 'text-gray-700 hover:bg-gray-50'}`}
+                        >
+                          ก่อนหน้า
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          disabled={currentPage === totalPages}
+                          className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${currentPage === totalPages ? 'text-gray-300' : 'text-gray-700 hover:bg-gray-50'}`}
+                        >
+                          ถัดไป
+                        </button>
+                      </div>
+                      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm text-gray-700">
+                            แสดง <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> ถึง <span className="font-medium">{Math.min(currentPage * pageSize, filteredTickets.length)}</span> จาก <span className="font-medium">{filteredTickets.length}</span> รายการ
+                          </p>
+                        </div>
+                        <div>
+                          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                              disabled={currentPage === 1}
+                              className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${currentPage === 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}`}
+                            >
+                              <span className="sr-only">ก่อนหน้า</span>
+                              {'<'}
+                            </button>
+                            {[...Array(totalPages)].map((_, i) => (
+                              <button
+                                key={i}
+                                onClick={() => setCurrentPage(i + 1)}
+                                className={`relative inline-flex items-center px-4 py-2 border ${currentPage === i + 1 ? 'bg-blue-50 border-blue-500 text-blue-600 z-10' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'} text-sm font-medium`}
+                              >
+                                {i + 1}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                              disabled={currentPage === totalPages}
+                              className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${currentPage === totalPages ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'}`}
+                            >
+                              <span className="sr-only">ถัดไป</span>
+                              {'>'}
+                            </button>
+                          </nav>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+          
+          {/* Ticket Detail */}
+          <div className="lg:w-3/5">
+            {selectedTicket ? (
+              <div className="bg-white shadow rounded-lg">
+                {/* Ticket header */}
+                <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">
+                      {selectedTicket.subject}
+                    </h3>
+                    <div className="flex space-x-2">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(selectedTicket.status)}`}>
+                        {getStatusText(selectedTicket.status)}
+                      </span>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityBadgeClass(selectedTicket.priority)}`}>
+                        {getPriorityText(selectedTicket.priority)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-1 max-w-2xl text-sm text-gray-500">
+                    <p>สร้างโดย {selectedTicket.username} · {formatDate(selectedTicket.createdAt)}</p>
+                  </div>
+                </div>
+                
+                {/* Ticket actions */}
+                <div className="px-4 py-3 border-b border-gray-200 sm:px-6 bg-gray-50">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="text-sm text-gray-500 mr-2">เปลี่ยนสถานะ:</span>
+                      <select
+                        value={selectedTicket.status}
+                        onChange={(e) => handleStatusUpdate(e.target.value as SupportTicket['status'])}
+                        className="mt-1 mr-2 block w-32 pl-3 pr-10 py-1 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                      >
+                        <option value="open">เปิด</option>
+                        <option value="in_progress">กำลังดำเนินการ</option>
+                        <option value="waiting_for_customer">รอลูกค้า</option>
+                        <option value="resolved">แก้ไขแล้ว</option>
+                        <option value="closed">ปิด</option>
+                      </select>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500 mr-1">
+                        มอบหมาย:
+                      </span>
+                      <span className="text-sm font-medium">
+                        {selectedTicket.assignedTo || 'ยังไม่ได้มอบหมาย'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Ticket messages */}
+                <div className="px-4 py-5 sm:p-6">
+                  <div className="space-y-6">
+                    {ticketMessages.map((message) => (
+                      <div key={message.id} className={`flex ${message.isFromAdmin ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`inline-block max-w-lg rounded-lg px-4 py-3 ${message.isFromAdmin ? 'bg-blue-50' : 'bg-gray-100'}`}>
+                          <div className="flex items-center mb-1">
+                            <span className={`text-sm font-medium ${message.isFromAdmin ? 'text-blue-600' : 'text-gray-700'}`}>
+                              {message.sender}
+                            </span>
+                            <span className="ml-2 text-xs text-gray-500">
+                              {getTimeAgo(message.createdAt)}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {message.message}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Reply form */}
+                {['open', 'in_progress', 'waiting_for_customer'].includes(selectedTicket.status) && (
+                  <div className="px-4 py-5 border-t border-gray-200 sm:px-6">
+                    <form onSubmit={handleReplySubmit}>
+                      <div>
+                        <label htmlFor="reply" className="block text-sm font-medium text-gray-700">
+                          ตอบกลับ
+                        </label>
+                        <div className="mt-1">
+                          <textarea
+                            id="reply"
+                            name="reply"
+                            rows={4}
+                            className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                            placeholder="พิมพ์ข้อความตอบกลับ..."
+                            value={replyMessage}
+                            onChange={(e) => setReplyMessage(e.target.value)}
+                          ></textarea>
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <button
+                          type="submit"
+                          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          disabled={!replyMessage.trim()}
+                        >
+                          ส่งข้อความ
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white shadow rounded-lg">
+                <div className="p-6 text-center text-gray-500">
+                  เลือกตั๋วจากรายการเพื่อดูรายละเอียด
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

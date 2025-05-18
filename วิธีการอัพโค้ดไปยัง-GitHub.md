@@ -111,7 +111,7 @@ git commit -m "Initial commit: n8nThai Docker deployment with Traefik"
 เชื่อมต่อ local repository กับ GitHub repository:
 
 ```bash
-git remote add origin https://github.com/yourusername/n8nthai.git
+git remote add origin https://github.com/playjoy88/n8nthai.git
 ```
 
 แทนที่ `yourusername` ด้วยชื่อผู้ใช้ GitHub ของคุณและ `n8nthai` ด้วยชื่อ repository ของคุณ
